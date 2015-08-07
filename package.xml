@@ -3,7 +3,7 @@
   <name>timed_path_follower</name>
   <version>0.0.0</version>
   <description>
-     The PathFollower class provides a local planner for differential drive
+     The timed_path_follower package provides a local planner for differential drive
      robots to follow dynamically feasible, time dependent global paths.
      The planner can be used as a local planner plugin for the ROS navigation stack
   </description>
