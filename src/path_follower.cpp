@@ -62,7 +62,7 @@ namespace path_executer
 
       //initialize ros publisher and service client
       current_waypoint_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("waypoint", 1);
-      replan_client_ = nh.serviceClient<std_srvs::Empty>("move_base/TBPlanner/replan");
+      replan_client_ = nh.serviceClient<std_srvs::Empty>("move_base/replan");
 
       //collect transform listener and the ros costmap from the nav stack
       tfl_ = tf;
