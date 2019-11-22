@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_core
   pluginlib
   roscpp
-  tf
+  tf2_ros
 )
 
 generate_dynamic_reconfigure_options(

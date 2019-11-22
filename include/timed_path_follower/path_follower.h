@@ -39,13 +39,14 @@
 
 #include <ros/ros.h>
 #include <angles/angles.h>
-#include <tf/transform_listener.h>
+#include <tf/tf.h>
 #include <dynamic_reconfigure/server.h>
-#include <pluginlib/class_list_macros.h>
+#include <pluginlib/class_list_macros.hpp>
 #include <nav_core/base_local_planner.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <std_srvs/Empty.h>
 #include <timed_path_follower/PathExecuterConfig.h>
 
@@ -85,7 +86,7 @@ public:
    * @param costmap_ros the (local) cost map that defines environment constraints
    *        for navigation
    */
-  void initialize(std::string name, tf::TransformListener* tf,
+  void initialize(std::string name, tf2_ros::Buffer* tf,
                   costmap_2d::Costmap2DROS* costmap_ros);
 
   /**
@@ -181,7 +182,7 @@ private:
   //ros related stuff
   costmap_2d::Costmap2DROS* costmap_ros_; ///< cost map with navigation constraints
   ros::ServiceClient replan_client_; ///< service client to make a replanning request to the global planner
-  tf::TransformListener* tfl_; ///< tf transform listener
+  tf2_ros::Buffer* tf_; ///< tf2 buffer
   dynamic_reconfigure::Server<path_executer::PathExecuterConfig> *dsrv_; ///< dynamic reconfigure server
   ros::Publisher current_waypoint_pub_; ///< ros publisher to visualize the currently scheduled waypoint
 

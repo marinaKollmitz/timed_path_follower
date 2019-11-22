@@ -51,7 +51,7 @@ namespace path_executer
   {
   }
 
-  void PathFollower::initialize(std::string name, tf::TransformListener *tf,
+  void PathFollower::initialize(std::string name, tf2_ros::Buffer *tf,
                                 costmap_2d::Costmap2DROS *costmap_ros)
   {
     if(!initialized_)
@@ -65,7 +65,7 @@ namespace path_executer
       replan_client_ = nh.serviceClient<std_srvs::Empty>("move_base/replan");
 
       //collect transform listener and the ros costmap from the nav stack
-      tfl_ = tf;
+      tf_ = tf;
       costmap_ros_ = costmap_ros;
 
       //initialize the dynamic reconfigure server and register the callback
@@ -198,7 +198,8 @@ namespace path_executer
     }
 
     //get the current robot pose in the costmap
-    tf::Stamped<tf::Pose> robot_pose;
+    geometry_msgs::PoseStamped robot_pose;
+
     if(!costmap_ros_->getRobotPose(robot_pose))
     {
       cmd_vel = zero_vel;
@@ -208,23 +209,21 @@ namespace path_executer
 
     //if the robot pose and the path (and goal) are represented in different
     //coordinate systems, transform the robot pose
-    if (robot_pose.frame_id_.compare(goal_.header.frame_id) != 0)
+    if (robot_pose.header.frame_id.compare(goal_.header.frame_id) != 0)
     {
       ROS_WARN_ONCE("path_executer: the specified fixed frame for the costmap (%s) "
                     "does not math the fixed frame of the path (%s). Therefore, I "
                     "have to transform the robot pose in each control loop. "
                     "This could cause a decreased control frequency. Consider "
                     "changing the (local) costmap's fixed frame",
-                    robot_pose.frame_id_.c_str(), goal_.header.frame_id.c_str());
+                    robot_pose.header.frame_id.c_str(), goal_.header.frame_id.c_str());
 
       try
       {
-        tfl_->waitForTransform(goal_.header.frame_id, robot_pose.frame_id_,
-                              robot_pose.stamp_, ros::Duration(0.2));
-        tfl_->transformPose(goal_.header.frame_id, robot_pose, robot_pose);
+        robot_pose = tf_->transform(robot_pose, goal_.header.frame_id, robot_pose.header.stamp, robot_pose.header.frame_id, ros::Duration(0.2));
       }
 
-      catch(tf::TransformException ex)
+      catch(tf2::TransformException ex)
       {
         ROS_ERROR("path_executer: could not transform robot pose in goal frame, "
                   "tf anwered: %s", ex.what());
@@ -239,20 +238,20 @@ namespace path_executer
     //check if we are already within the goal tolerance
     tf::Pose goal;
     tf::poseMsgToTF(goal_.pose, goal);
+    tf::Pose rob_pose;
+    tf::poseMsgToTF(robot_pose.pose, rob_pose);
 
     //calculate the transformation between the robot and the goal pose
-    tf::Transform robot_in_goal = goal.inverse() * robot_pose;
+    tf::Transform robot_in_goal = goal.inverse() * rob_pose;
 
     //calculate the euclidian distance between the current robot pose and the goal
     double goal_distance =
         hypot(robot_in_goal.getOrigin().getX(), robot_in_goal.getOrigin().getY());
 
     //calculate the angular distance between the current robot pose and the goal
-    geometry_msgs::Quaternion quat;
-    tf::quaternionTFToMsg(robot_pose.getRotation(), quat);
     double angular_goal_distance =
         angles::shortest_angular_distance(tf::getYaw(goal_.pose.orientation),
-                                          tf::getYaw(quat));
+                                          tf::getYaw(robot_pose.pose.orientation));
 
     //check if robot is within the goal distance
     if(goal_distance < xy_goal_tolerance_ && fabs(angular_goal_distance) < yaw_goal_tolerance_)
@@ -270,9 +269,11 @@ namespace path_executer
     {
       tf::Pose waypnt;
       tf::poseMsgToTF(waypoint.pose, waypnt);
+      tf::Pose rob_pose;
+      tf::poseMsgToTF(robot_pose.pose, rob_pose);
 
       //calculate transformation between the robot position and the desired position
-      tf::Pose robot_in_wpnt = waypnt.inverse() * robot_pose;
+      tf::Pose robot_in_wpnt = waypnt.inverse() * rob_pose;
 
       double delta_x = robot_in_wpnt.getOrigin().getX();
       double delta_y = robot_in_wpnt.getOrigin().getY();
